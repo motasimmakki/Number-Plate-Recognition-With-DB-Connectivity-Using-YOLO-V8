@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>License Plate Recognition</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>License Plate Recognition</h1>
+        
+        <div class="main-content">
+            <!-- Video Display -->
+            <div class="video-container">
+                <!-- Showing Recording -->
+                <video id="cameraPreview" autoplay muted loop></video>
+                <div class="video-label">Live Camera Feed</div>
+            </div>
+            
+            <div class="video-container">
+                <video id="videoPlayer1" controls muted loop></video>
+                <div class="video-label">Recorded/Uploaded Video</div>
+            </div>
+
+            <!-- Recognized Plates -->
+            <div class="plates-container">
+                <h3>List of Plates (Recognized)</h3>
+                <ul id="platesList"></ul>
+            </div>
+
+            <!-- Video Display
+            <div>
+                <video id="videoPlayer2" controls muted loop>
+                    <source type="video/mp4">
+                </video>
+            </div> -->
+        </div>
+
+        <!-- Buttons Section -->
+        <div class="buttons">
+            <input type="file" id="videoFile">
+            <button id="uploadBtn">Upload</button>
+            <button id="testBtn">Test</button>
+            <button id="downloadBtn">Download</button>
+            
+            <button id="startRecordingBtn">Start Recording</button>
+            <button id="stopRecordingBtn" disabled>Stop Recording</button>
+        </div>
+        
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-images">
+                <img src="logo/logo-01.png" alt="Image 1">
+            </div>
+            <div class="footer-text">
+                <p>&lt;/&gt; with 🧡 for UDAAN</p>
+                <p>Air Force Station, Rajokri, New Delhi</p>
+                <p style="font-weight: bold;">©️ 2025 IAF, ALL Rights Reserved.</p>
+            </div>
+            <div class="footer-images">
+                <img src="./logo/logo-02.png" alt="Image 2">
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        let uploadedVideoPath = "";
+        let uploadedFileName = ""; // Variable to store the file name
+        // let searchInterval; // Variable to store the interval ID
+        const baseUrl = "{{ base_url }}";
+
+        // Video Recording Variables
+        let mediaRecorder;
+        let recordedChunks = [];
+        const cameraPreview = document.getElementById("cameraPreview");
+        const videoPlayer1 = document.getElementById("videoPlayer1");
+
+        // Handle Upload
+        $("#uploadBtn").on("click", function () {
+            const fileInput = $("#videoFile")[0].files[0];
+            if (!fileInput) {
+                alert("Please select a video file to upload.");
+                return;
+            }
+
+            // Extract the filename
+            uploadedFileName = fileInput.name;
+
+            const formData = new FormData();
+            formData.append("file", fileInput);
+
+            $.ajax({
+                url: "/upload",
+                type: "POST",
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function (response) {
+                    if (response.file_path) {
+                        uploadedVideoPath = response.file_path;
+
+                        // Set the video source and play it
+                        const videoPlayer1 = $("#videoPlayer1");
+                        videoPlayer1.attr("src", uploadedVideoPath);
+                        videoPlayer1[0].load();
+                        videoPlayer1[0].play();
+
+                        // Show the filename in an alert or log it
+                        alert(`File uploaded successfully: ${uploadedFileName}`);
+                        console.log(`Uploaded file: ${uploadedFileName}`);
+                    }
+                },
+                error: function () {
+                    alert("Failed to upload file.");
+                },
+            });
+        });
+
+        // Handle Test
+        $("#testBtn").on("click", function () {
+            if (!uploadedVideoPath) {
+                alert("Please upload a video first.");
+                return;
+            }
+
+            $.ajax({
+                url: "/test",
+                type: "POST",
+                data: { video_path: uploadedVideoPath },
+                success: function (response) {
+                    const platesList = $("#platesList");
+                    platesList.empty(); // Clear the current list
+
+                    if (response.recognized_plates && response.recognized_plates.length > 0) {
+                        response.recognized_plates.forEach(function (plate) {
+                            platesList.append(`<li>${plate}</li>`);
+                        });
+                    } else {
+                        platesList.append("<li>No plates recognized.</li>");
+                    }
+                },
+                error: function () {
+                    alert("Failed to run model. Check your server logs for details.");
+                },
+            });
+        });
+
+        // Handle Download
+        $("#downloadBtn").on("click", function () {
+            window.location.href = "/download";
+        });
+
+        // Start Recording
+        $("#startRecordingBtn").on("click", async function () {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                cameraPreview.srcObject = stream;
+
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.ondataavailable = function (event) {
+                    if (event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                    }
+                };
+
+                mediaRecorder.onstop = async function () {
+                    const blob = new Blob(recordedChunks, { type: "video/webm" });
+                    const formData = new FormData();
+                    formData.append("file", blob, "recording.webm");
+
+                    // Save the file on the server
+                    $.ajax({
+                        url: "/save-recording",
+                        type: "POST",
+                        data: formData,
+                        processData: false,
+                        contentType: false,
+                        success: function (response) {
+                            if (response.file_path) {
+                                videoPlayer1.src = response.file_path;
+                                videoPlayer1.load();
+                                videoPlayer1.play();
+                                alert("Recording saved successfully.");
+                            }
+                        },
+                        error: function () {
+                            alert("Failed to save the recording.");
+                        }
+                    });
+                };
+
+                mediaRecorder.start();
+                $("#startRecordingBtn").prop("disabled", true);
+                $("#stopRecordingBtn").prop("disabled", false);
+            } catch (error) {
+                console.error("Error accessing camera:", error);
+                alert("Could not start camera.");
+            }
+        });
+
+        // Stop Recording
+        $("#stopRecordingBtn").on("click", function () {
+            mediaRecorder.stop();
+            const stream = cameraPreview.srcObject;
+            stream.getTracks().forEach(track => track.stop());
+
+            $("#startRecordingBtn").prop("disabled", false);
+            $("#stopRecordingBtn").prop("disabled", true);
+        });
+    </script>
+</body>
+</html>

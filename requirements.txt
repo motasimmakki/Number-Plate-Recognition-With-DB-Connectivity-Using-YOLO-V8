@@ -1,5 +1,11 @@
+# common CV tasks
 opencv-python
-ultralytics
-paddlepaddle
+# for using YOLO
+ultralytics 
+# for reading texts
+paddlepaddle 
 paddleocr
+# to stablish connection
 mysql-connector-python
+# for web-app
+flask 

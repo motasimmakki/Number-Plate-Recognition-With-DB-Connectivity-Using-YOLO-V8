@@ -7,6 +7,13 @@ from datetime import datetime
 import mysql.connector
 from paddleocr import PaddleOCR
 
+import argparse
+
+# Set up argument parser
+parser = argparse.ArgumentParser(description="Process a video file.")
+parser.add_argument('file', type=str, help="Path to the video file")
+args = parser.parse_args()
+
 
 class DetectPLate(BaseSolution):
     def __init__(self, **kwargs):
@@ -128,7 +135,16 @@ class DetectPLate(BaseSolution):
 
 
 # Open the video file
-cap = cv2.VideoCapture('./uploads/demo.mp4')
+# cap = cv2.VideoCapture('./uploads/demo.mp4')
+
+# Use the file name passed as a command-line argument
+cap = cv2.VideoCapture(args.file)
+
+# Check if the video file was opened successfully
+if not cap.isOpened():
+    print(f"Error: Cannot open video file {args.file}")
+else:
+    print(f"Processing video: {args.file}")
 
 # Initialize the object counter
 detection_obj = DetectPLate(
