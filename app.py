@@ -3,6 +3,9 @@ import os
 import subprocess
 import threading
 
+import mysql.connector
+import csv
+
 app = Flask(__name__)
 UPLOAD_FOLDER = "uploads"
 if not os.path.exists(UPLOAD_FOLDER):
@@ -79,20 +82,44 @@ def test_model():
     session["recognized_plates"] = recognized_plates  # Store plates in session for download
     return jsonify({"recognized_plates": recognized_plates})
 
+def download_from_db():
+    """Establish connection to MySQL database and fetch the stored data."""
+    try:
+        # Connect to MySQL server
+        connection = mysql.connector.connect(
+            host="localhost",
+            user="root",  # MySQL username
+            password="password",   # MySQL password
+            database="number_plates"  # Database name
+        )
+        cursor = connection.cursor()
+
+        # Query to fetch data from the table
+        select_query = "SELECT * FROM detection_data"
+
+        cursor.execute(select_query)
+        rows = cursor.fetchall()
+
+        # Save to CSV file
+        result_file = 'detection_data.csv'
+        with open(result_file, mode='w', newline='', encoding='utf-8') as file:
+            writer = csv.writer(file)
+            # Writing the headers
+            writer.writerow([i[0] for i in cursor.description])
+            # Writing the rows
+            writer.writerows(rows)
+
+        print("Data saved to 'detection_data.csv' successfully!")
+        return result_file
+    except mysql.connector.Error as err:
+        print(f"Error connecting to database: {err}")
+        raise
+
 @app.route("/download", methods=["GET"])
 def download_results():
-    result_file = os.path.join(UPLOAD_FOLDER, "recognized_plates.txt")
-
-    # Retrieve the recognized plates from session or a persistent store
-    recognized_plates = session.get("recognized_plates", [])
-    if not recognized_plates:
+    result_file = download_from_db()
+    if not result_file:
         return jsonify({"error": "No recognized plates available for download"}), 400
-
-    # Write recognized plates to a file
-    with open(result_file, "w") as f:
-        f.write("\n".join(recognized_plates))
-    
-    # Send the file for download
     return send_file(result_file, as_attachment=True)
 
 @app.route('/save-recording', methods=['POST'])
