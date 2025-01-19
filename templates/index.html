@@ -124,27 +124,46 @@
                 alert("Please upload a video first.");
                 return;
             }
-
-            $.ajax({
-                url: "/test",
-                type: "POST",
-                data: { video_path: uploadedVideoPath },
-                success: function (response) {
-                    const platesList = $("#platesList");
-                    platesList.empty(); // Clear the current list
-
-                    if (response.recognized_plates && response.recognized_plates.length > 0) {
-                        response.recognized_plates.forEach(function (plate) {
-                            platesList.append(`<li>${plate}</li>`);
-                        });
-                    } else {
-                        platesList.append("<li>No plates recognized.</li>");
+            const platesList = $("#platesList");
+            platesList.empty(); // Clear the current list before streaming new results
+            fetch("/test", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+                body: `video_path=${encodeURIComponent(uploadedVideoPath)}`,
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error("Failed to connect to the server.");
                     }
-                },
-                error: function () {
-                    alert("Failed to run model. Check your server logs for details.");
-                },
-            });
+                    return response.body.getReader();
+                })
+                .then(reader => {
+                    const decoder = new TextDecoder("utf-8");
+                    function readStream() {
+                        reader.read().then(({ done, value }) => {
+                            if (done) {
+                                console.log("Stream complete.");
+                                return;
+                            }
+                            const chunk = decoder.decode(value, { stream: true });
+                            chunk.split("\n\n").forEach(data => {
+                                if (data.startsWith("data:")) {
+                                    const message = data.replace("data:", "").trim()
+                                        .replace('{', "").replaceAll("'", ' ').replace('}', "").replaceAll(", " ," |");
+                                    platesList.append(`<li>${message}</li>`);
+                                }
+                            });
+                            readStream(); // Continue reading
+                        });
+                    }
+                    readStream();
+                })
+                .catch(error => {
+                    console.error(error);
+                    alert("Failed to receive updates from the server.");
+                });
         });
 
         // Handle Download

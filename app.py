@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, send_file, send_from_directory, session, url_for
+from flask import Flask, render_template, request, Response, jsonify, send_file, send_from_directory, session, url_for
 import os
 import subprocess
 import threading
@@ -16,22 +16,28 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.secret_key = "your_secret_key"  # Required for session usage
 
 def run_deep_learning_model(video_path):
+    """
+    Executes the deep learning model in a separate thread and streams status updates.
+    """
     def run_model():
         curr_env = "python"
         try:
-            # Run Script
-            subprocess.run(
+            # Run the external script with the video path as an argument
+            process = subprocess.Popen(
                 [curr_env, "main.py", video_path],
-                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,  # Enables text mode
+                encoding='utf-8',  # Decodes output as UTF-8
             )
+            # Stream output line-by-line
+            for line in process.stdout:
+                yield f"Processing: {line.strip()}"
+            process.wait()
         except subprocess.CalledProcessError as e:
-            print(f"Error occurred while running the scripts: {e}")
-            return []
-
-    # Run the subprocess in a separate thread
-    thread = threading.Thread(target=run_model, daemon=True)
-    thread.start()
-    print(f"Deep learning model is running in a separate thread for {video_path}.")
+            yield f"Error: {str(e)}"
+    
+    return run_model()
 
     # # Return recognized plates (dummy example)
     # return ["ABC123", "XYZ789", "LMN456", "UP113899"]
@@ -75,12 +81,14 @@ def test_model():
     if not video_path or not os.path.exists(video_path[1:]):  # Remove leading slash from file path
         return jsonify({"error": "Invalid video path"})
 
-    # Run the deep learning model on the uploaded video
-    recognized_plates = run_deep_learning_model(video_path[1:])  # Use the proper video path
+    # Generator for streaming payload data only
+    def generate():
+        for message in run_deep_learning_model(video_path[1:]):
+            # if "curr_date" in message and "curr_time" in message and "recognized_number" in message:
+            if "Date" in message and "Time" in message:
+                yield f"data: {message}\n\n"  # Send only payload-like messages
 
-    # Save results dynamically
-    session["recognized_plates"] = recognized_plates  # Store plates in session for download
-    return jsonify({"recognized_plates": recognized_plates})
+    return Response(generate(), content_type="text/event-stream")
 
 def download_from_db():
     """Establish connection to MySQL database and fetch the stored data."""

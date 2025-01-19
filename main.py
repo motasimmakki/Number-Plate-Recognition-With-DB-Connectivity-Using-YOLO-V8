@@ -8,12 +8,14 @@ import mysql.connector
 from paddleocr import PaddleOCR
 
 import argparse
-
 # Set up argument parser
 parser = argparse.ArgumentParser(description="Process a video file.")
 parser.add_argument('file', type=str, help="Path to the video file")
 args = parser.parse_args()
 
+import requests
+# URL of the Flask app
+BASE_URL = "http://127.0.0.1:5000"
 
 class DetectPLate(BaseSolution):
     def __init__(self, **kwargs):
@@ -122,13 +124,33 @@ class DetectPLate(BaseSolution):
             # Ensure OCR text is not empty and save OCR text with the relevant details if not already logged
             # if track_id not in self.logged_ids and ocr_text.strip():
             if track_id not in self.logged_ids and ocr_text.strip():
+                curr_date = current_time.strftime("%Y-%m-%d")
+                curr_time = current_time.strftime("%H:%M:%S")
+                recognized_number = ocr_text
                 self.save_to_database(
-                    current_time.strftime("%Y-%m-%d"),
-                    current_time.strftime("%H:%M:%S"),
+                    curr_date,
+                    curr_time,
                     track_id,
-                    ocr_text
+                    recognized_number
                 )
                 self.logged_ids.add(track_id)
+
+                payload = {
+                    "Date": curr_date,
+                    "Time": curr_time,
+                    "Tracked Number": recognized_number
+                }
+            
+                # Send POST request
+                response = requests.post(f"{BASE_URL}/test", json=payload)
+
+                # Handle the response
+                if response.status_code == 200:
+                    # Server sends back a response
+                    # print("Response sent successfully:", payload)
+                    print(payload)
+                else:
+                    print("Failed to send the response. Status code:", response.status_code)
 
         self.display_output(im0)  # Display output with base class function
         return im0
@@ -170,7 +192,7 @@ while True:
     result = detection_obj.perform_detection(frame)
 
     # Show the frame
-    cv2.imshow("RGB", result)
+    cv2.imshow("Processing. . .", result)
     if cv2.waitKey(2) & 0xFF == ord("q"):  # Press 'q' to quit
         break
 
