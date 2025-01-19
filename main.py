@@ -188,7 +188,7 @@ while True:
 
     # Show the frame
     cv2.imshow("Processing. . .", result)
-    if cv2.waitKey(2) & 0xFF == ord("q"):  # Press 'q' to quit
+    if cv2.waitKey(1) & 0xFF == ord("q"):  # Press 'q' to quit
         break
 
 # Release the video capture object and close the display window
