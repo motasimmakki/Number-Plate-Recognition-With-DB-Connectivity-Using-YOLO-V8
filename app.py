@@ -1,23 +1,22 @@
-from flask import Flask, render_template, request, Response, jsonify, send_file, send_from_directory, session, url_for
+# essential imports
+from flask import Flask, render_template, request, Response, jsonify, send_file, send_from_directory, url_for
 import os
 import subprocess
-import threading
 
 import mysql.connector
 import csv
 
+# Initialize flask app
 app = Flask(__name__)
 UPLOAD_FOLDER = "uploads"
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
-
+# update configuration settings
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
-app.secret_key = "your_secret_key"  # Required for session usage
-
-def run_deep_learning_model(video_path):
+def model_handler(video_path):
     """
-    Executes the deep learning model in a separate thread and streams status updates.
+    Executes the model as a subprocess.
     """
     def run_model():
         curr_env = "python"
@@ -32,15 +31,13 @@ def run_deep_learning_model(video_path):
             )
             # Stream output line-by-line
             for line in process.stdout:
-                yield f"Processing: {line.strip()}"
+                # yield f"Processing: {line.strip()}"
+                yield f"{line.strip()}"
             process.wait()
         except subprocess.CalledProcessError as e:
             yield f"Error: {str(e)}"
     
     return run_model()
-
-    # # Return recognized plates (dummy example)
-    # return ["ABC123", "XYZ789", "LMN456", "UP113899"]
 
 # Serve the 'logo' folder as static
 @app.route('/logo/<path:filename>')
@@ -55,9 +52,9 @@ def serve_output_file(filename):
 
 @app.route("/")
 def index():
-    base_url = url_for('serve_output_file', filename='')  # Get the base URL for the route
+    # Get the base URL for the route
+    base_url = url_for('serve_output_file', filename='') 
     return render_template('index.html', base_url=base_url)
-    # return render_template("index.html")
 
 @app.route("/upload", methods=["POST"])
 def upload_file():
@@ -75,6 +72,17 @@ def upload_file():
 def serve_uploaded_file(filename):
     return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
 
+@app.route('/save-recording', methods=['POST'])
+def save_recording():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+
+    file = request.files['file']
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+    file.save(file_path)
+
+    return jsonify({"file_path": f"/uploads/{file.filename}"}), 200
+
 @app.route("/test", methods=["POST"])
 def test_model():
     video_path = request.form.get("video_path")
@@ -83,7 +91,7 @@ def test_model():
 
     # Generator for streaming payload data only
     def generate():
-        for message in run_deep_learning_model(video_path[1:]):
+        for message in model_handler(video_path[1:]):
             # if "curr_date" in message and "curr_time" in message and "recognized_number" in message:
             if "Date" in message and "Time" in message:
                 yield f"data: {message}\n\n"  # Send only payload-like messages
@@ -102,7 +110,7 @@ def download_from_db():
         )
         cursor = connection.cursor()
 
-        # Query to fetch data from the table
+        # Query to fetch all the data from the table
         select_query = "SELECT * FROM detection_data"
 
         cursor.execute(select_query)
@@ -129,18 +137,6 @@ def download_results():
     if not result_file:
         return jsonify({"error": "No recognized plates available for download"}), 400
     return send_file(result_file, as_attachment=True)
-
-@app.route('/save-recording', methods=['POST'])
-def save_recording():
-    if 'file' not in request.files:
-        return jsonify({"error": "No file uploaded"}), 400
-
-    file = request.files['file']
-    file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-    file.save(file_path)
-
-    return jsonify({"file_path": f"/uploads/{file.filename}"}), 200
     
 if __name__ == "__main__":
     app.run(debug=True)
-

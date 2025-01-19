@@ -1,3 +1,4 @@
+# essential imports
 import cv2
 from time import time
 import numpy as np
@@ -21,7 +22,6 @@ class DetectPLate(BaseSolution):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self.trkd_ids = []  # List for already tracked IDs
         self.trk_pt = {}  # Dictionary for previous timestamps
         self.trk_pp = {}  # Dictionary for previous positions
         self.logged_ids = set()  # Set to keep track of already logged IDs
@@ -94,10 +94,10 @@ class DetectPLate(BaseSolution):
             print(f"Error saving to database: {err}")
             raise
 
-    def perform_detection(self, im0):
+    def perform_detection(self, curr_frame):
         """Detect vehicles and track them."""
-        self.annotator = Annotator(im0, line_width=self.line_width)  # Initialize annotator
-        self.extract_tracks(im0)  # Extract tracks
+        self.annotator = Annotator(curr_frame, line_width=self.line_width)  # Initialize annotator
+        self.extract_tracks(curr_frame)  # Extract tracks
 
         # Get current date and time
         current_time = datetime.now()
@@ -118,11 +118,10 @@ class DetectPLate(BaseSolution):
             self.trk_pt[track_id] = time()
             self.trk_pp[track_id] = self.track_line[-1]
             x1, y1, x2, y2 = map(int, box)  # Convert box coordinates to integers
-            cropped_image = np.array(im0)[y1:y2, x1:x2]
+            cropped_image = np.array(curr_frame)[y1:y2, x1:x2]
             ocr_text = self.perform_ocr(cropped_image)
 
             # Ensure OCR text is not empty and save OCR text with the relevant details if not already logged
-            # if track_id not in self.logged_ids and ocr_text.strip():
             if track_id not in self.logged_ids and ocr_text.strip():
                 curr_date = current_time.strftime("%Y-%m-%d")
                 curr_time = current_time.strftime("%H:%M:%S")
@@ -152,12 +151,8 @@ class DetectPLate(BaseSolution):
                 else:
                     print("Failed to send the response. Status code:", response.status_code)
 
-        self.display_output(im0)  # Display output with base class function
-        return im0
-
-
-# Open the video file
-# cap = cv2.VideoCapture('./uploads/demo.mp4')
+        self.display_output(curr_frame)  # Display output with base class function
+        return curr_frame
 
 # Use the file name passed as a command-line argument
 cap = cv2.VideoCapture(args.file)

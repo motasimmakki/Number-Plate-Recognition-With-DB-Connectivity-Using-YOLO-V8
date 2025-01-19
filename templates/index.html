@@ -59,12 +59,11 @@
     </div>
 
     <script>
-        let uploadedVideoPath = "";
-        let uploadedFileName = ""; // Variable to store the file name
-        // let searchInterval; // Variable to store the interval ID
+        let uploadedVideoPath = ""; // file path
+        let uploadedFileName = ""; // file name
         const baseUrl = "{{ base_url }}";
 
-        // Video Recording Variables
+        // for recording video
         let mediaRecorder;
         let recordedChunks = [];
         const cameraPreview = document.getElementById("cameraPreview");
@@ -72,6 +71,7 @@
 
         // Handle Upload
         $("#uploadBtn").on("click", function () {
+            // Accessing and selecting the file.
             const fileInput = $("#videoFile")[0].files[0];
             if (!fileInput) {
                 alert("Please select a video file to upload.");
@@ -100,7 +100,7 @@
                         videoPlayer1[0].load();
                         videoPlayer1[0].play();
 
-                        // Show the filename in an alert or log it
+                        // Show the filename in an alert and log it.
                         alert(`File uploaded successfully: ${uploadedFileName}`);
                         console.log(`Uploaded file: ${uploadedFileName}`);
                     }
@@ -120,7 +120,8 @@
 
             const testBtn = $("#testBtn");
             const platesList = $("#platesList");
-            platesList.empty(); // Clear the current list before streaming new results
+            // Clear the current list before streaming new results
+            platesList.empty(); 
 
             // Change button color to indicate processing
             testBtn.css("background-color", "#f39c12").text("Processing...").prop("disabled", true);
