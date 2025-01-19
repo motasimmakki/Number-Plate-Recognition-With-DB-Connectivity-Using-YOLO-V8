@@ -58,7 +58,7 @@ class DetectPLate(BaseSolution):
                 date DATE,
                 time TIME,
                 track_id INT,
-                numberplate TEXT
+                number_plate TEXT
             )
             """
             cursor.execute(create_table_query)
@@ -79,17 +79,17 @@ class DetectPLate(BaseSolution):
             raise TypeError("Input image is not a valid numpy array")
         return ' '.join([result[1][0] for result in results[0]] if results[0] else "")
 
-    def save_to_database(self, date, time, track_id, numberplate):
+    def save_to_database(self, date, time, track_id, number_plate):
         """Save data to the MySQL database."""
         try:
             cursor = self.db_connection.cursor()
             query = """
-                INSERT INTO detection_data (date, time, track_id, numberplate)
+                INSERT INTO detection_data (date, time, track_id, number_plate)
                 VALUES (%s, %s, %s, %s)
             """
-            cursor.execute(query, (date, time, track_id, numberplate))
+            cursor.execute(query, (date, time, track_id, number_plate))
             self.db_connection.commit()
-            print(f"Data saved to database: {date}, {time}, {track_id}, {numberplate}")
+            print(f"Data saved to database: {date}, {time}, {track_id}, {number_plate}")
         except mysql.connector.Error as err:
             print(f"Error saving to database: {err}")
             raise

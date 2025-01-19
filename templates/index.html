@@ -29,13 +29,6 @@
                 <h3>List of Plates (Recognized)</h3>
                 <ul id="platesList"></ul>
             </div>
-
-            <!-- Video Display
-            <div>
-                <video id="videoPlayer2" controls muted loop>
-                    <source type="video/mp4">
-                </video>
-            </div> -->
         </div>
 
         <!-- Buttons Section -->
@@ -43,7 +36,7 @@
             <input type="file" id="videoFile">
             <button id="uploadBtn">Upload</button>
             <button id="testBtn">Test</button>
-            <button id="downloadBtn">Download</button>
+            <button id="downloadBtn" disabled>Download</button>
             
             <button id="startRecordingBtn">Start Recording</button>
             <button id="stopRecordingBtn" disabled>Stop Recording</button>
@@ -124,8 +117,20 @@
                 alert("Please upload a video first.");
                 return;
             }
+
+            const testBtn = $("#testBtn");
             const platesList = $("#platesList");
             platesList.empty(); // Clear the current list before streaming new results
+
+            // Change button color to indicate processing
+            testBtn.css("background-color", "#f39c12").text("Processing...").prop("disabled", true);
+
+            // Disable all the other button till complete execution of model
+            $("#videoFile").prop("disabled", true);
+            $("#uploadBtn").prop("disabled", true);
+            $("#downloadBtn").prop("disabled", true);
+            $("#startRecordingBtn").prop("disabled", true);
+
             fetch("/test", {
                 method: "POST",
                 headers: {
@@ -145,13 +150,21 @@
                         reader.read().then(({ done, value }) => {
                             if (done) {
                                 console.log("Stream complete.");
+                                // Reset button color and text
+                                testBtn.css("background-color", "").text("Test").prop("disabled", false);
+                                // Enabling all the other buttons
+                                $("#videoFile").prop("disabled", false);
+                                $("#uploadBtn").prop("disabled", false);
+                                $("#downloadBtn").prop("disabled", false);
+                                $("#startRecordingBtn").prop("disabled", false);
+                                alert("🎉Done executing model.");
                                 return;
                             }
                             const chunk = decoder.decode(value, { stream: true });
                             chunk.split("\n\n").forEach(data => {
                                 if (data.startsWith("data:")) {
                                     const message = data.replace("data:", "").trim()
-                                        .replace('{', "").replaceAll("'", ' ').replace('}', "").replaceAll(", " ," |");
+                                        .replace('{', "").replaceAll("'", ' ').replace('}', "").replaceAll(", ", " |");
                                     platesList.append(`<li>${message}</li>`);
                                 }
                             });
@@ -163,6 +176,8 @@
                 .catch(error => {
                     console.error(error);
                     alert("Failed to receive updates from the server.");
+                    // Reset button color and text in case of an error
+                    testBtn.css("background-color", "").text("Test").prop("disabled", false);
                 });
         });
 

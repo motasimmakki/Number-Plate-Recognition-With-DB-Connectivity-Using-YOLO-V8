@@ -400,3 +400,4 @@ FodyWeavers.xsd
 *.sln.iml
 
 *.mp4
+uploads/*

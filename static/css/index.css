@@ -131,6 +131,14 @@ button:disabled {
     cursor: not-allowed;
 }
 
+#downloadBtn {
+    background-color: #11d418;
+}
+
+#downloadBtn:hover {
+    background-color: #3f9849;
+}
+
 .footer {
     height: 100px;
     margin-top: 80px;
