@@ -158,7 +158,8 @@ else:
 
 # Initialize the object counter
 detection_obj = DetectPLate(
-    model="detection_model.pt",  # YOLO model file
+    # model="detection_model.pt",  # YOLO model file
+    model="best_20.pt",  # YOLO model file
     line_width=2
 )
 
