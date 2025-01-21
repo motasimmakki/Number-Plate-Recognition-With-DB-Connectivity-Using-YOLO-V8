@@ -8,4 +8,9 @@ paddleocr
 # to stablish connection
 mysql-connector-python
 # for web-app
-flask 
+flask
+# for environment files
+python-dotenv 
+# YOLO-v8 dependency
+omegaconf
+lap
