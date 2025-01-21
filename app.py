@@ -3,7 +3,7 @@ from flask import Flask, render_template, request, Response, jsonify, send_file,
 import os
 import subprocess
 
-import mysql.connector
+import sqlite3
 import csv
 
 # Initialize flask app
@@ -99,15 +99,11 @@ def test_model():
     return Response(generate(), content_type="text/event-stream")
 
 def download_from_db():
-    """Establish connection to MySQL database and fetch the stored data."""
+    """Establish connection to SQLite database and fetch the stored data."""
     try:
-        # Connect to MySQL server
-        connection = mysql.connector.connect(
-            host="localhost",
-            user="root",  # MySQL username
-            password="password",   # MySQL password
-            database="number_plates"  # Database name
-        )
+        db_name = "number_plates.db"
+        # Connect to SQLite server
+        connection = sqlite3.connect(db_name)
         cursor = connection.cursor()
 
         # Query to fetch all the data from the table
@@ -125,9 +121,12 @@ def download_from_db():
             # Writing the rows
             writer.writerows(rows)
 
+        # Closing the connection
+        connection.close()
+
         print("Data saved to 'detection_data.csv' successfully!")
         return result_file
-    except mysql.connector.Error as err:
+    except sqlite3.Error as err:
         print(f"Error connecting to database: {err}")
         raise
 

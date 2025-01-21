@@ -5,7 +5,7 @@ import numpy as np
 from ultralytics.solutions.solutions import BaseSolution
 from ultralytics.utils.plotting import Annotator, colors
 from datetime import datetime
-import mysql.connector
+import sqlite3
 from paddleocr import PaddleOCR
 
 import argparse
@@ -34,22 +34,15 @@ class DetectPLate(BaseSolution):
         self.db_connection = self.connect_to_db()
 
     def connect_to_db(self):
-        """Establish connection to MySQL database and create database/table if not exists."""
+        """Establish connection to SQLite database and create database/table if not exists."""
         try:
-            # Connect to MySQL server
-            connection = mysql.connector.connect(
-                host="localhost",
-                user="root",  # MySQL username
-                password="password"   # MySQL password
-            )
+            db_name = "number_plates.db"
+            # Connect to SQLite server
+            connection = sqlite3.connect(db_name)
             cursor = connection.cursor()
 
             # Create database if it doesn't exist
-            cursor.execute("CREATE DATABASE IF NOT EXISTS number_plates")
             print("\nDatabase 'number_plates' - checked/created.")
-
-            # Connect to the newly created or existing database
-            connection.database = "number_plates"
 
             # Create table if it doesn't exist
             create_table_query = """
@@ -65,7 +58,7 @@ class DetectPLate(BaseSolution):
             print("\nTable 'detection_data' - checked/created.")
 
             return connection
-        except mysql.connector.Error as err:
+        except sqlite3.Error as err:
             print(f"Error connecting to database: {err}")
             raise
 
@@ -85,12 +78,12 @@ class DetectPLate(BaseSolution):
             cursor = self.db_connection.cursor()
             query = """
                 INSERT INTO detection_data (date, time, track_id, number_plate)
-                VALUES (%s, %s, %s, %s)
+                VALUES (?, ?, ?, ?)
             """
             cursor.execute(query, (date, time, track_id, number_plate))
             self.db_connection.commit()
             print(f"Data saved to database: {date}, {time}, {track_id}, {number_plate}")
-        except mysql.connector.Error as err:
+        except sqlite3.Error as err:
             print(f"Error saving to database: {err}")
             raise
 
