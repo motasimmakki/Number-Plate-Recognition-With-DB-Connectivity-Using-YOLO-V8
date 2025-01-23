@@ -1,0 +1,5 @@
+# download packages: 
+https://drive.google.com/file/d/15ZxdNUKT4PmjNJtGBEi7Z7GH06vRNxHC/view?usp=sharing
+
+# linking command:
+pip install --no-index --find-links=packages -r requirements.txt
